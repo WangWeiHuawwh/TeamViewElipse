@@ -31,7 +31,11 @@ import java.lang.reflect.Field;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 
@@ -1025,20 +1029,53 @@ public class WatchService extends AccessibilityService {
 		return text;
 	}
 
+	/**
+	 * 将长时间格式时间转换为字符串 yyyy-MM-dd HH:mm:ss
+	 * 
+	 * @param dateDate
+	 * @return
+	 */
 	public static String toTime(String time) {
-		String day = time.substring(0, 10).replace('-', '/');
-		String newTime = time.substring(11, 19);
-		return day + " " + newTime;
+		Date date = null;
+		SimpleDateFormat format1 = new SimpleDateFormat(
+				"yyyy-MM-dd'T'HH:mm:ss.SSS");
+		try {
+			date = format1.parse(time);
+		} catch (ParseException e) {
+			e.printStackTrace();
+		}
+		if (date != null) {
+			SimpleDateFormat formatter = new SimpleDateFormat(
+					"yyyy/MM/dd HH:mm:ss");
+			String dateString = formatter.format(date);
+			return dateString;
+		} else {
+			return "";
+		}
 	}
 
 	public static String toTime2(String time) {
-		if (time.length() > 22) {
-			String day = time.substring(0, 10).replace('-', '/');
-			String newTime = time.substring(15, 23);
-			return day + " " + newTime;
-		} else {
-			return "to time2 error";
+		Date date = null;
+		String newTime = "";
+		String[] aa = time.split(" ");
+		if (aa.length == 2) {
+			newTime = aa[0] + " " + aa[1];
+		} else if (aa.length == 3) {
+			newTime = aa[0] + " " + aa[2];
 		}
-
+		SimpleDateFormat format1 = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+		try {
+			date = format1.parse(newTime);
+		} catch (ParseException e) {
+			e.printStackTrace();
+		}
+		if (date != null) {
+			SimpleDateFormat formatter = new SimpleDateFormat(
+					"yyyy/MM/dd HH:mm:ss");
+			String dateString = formatter.format(date);
+			return dateString;
+		} else {
+			return "";
+		}
 	}
 }
