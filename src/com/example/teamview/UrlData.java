@@ -13,4 +13,5 @@ public class UrlData {
 	public static String URL_UPDATE_TIME_END = "http://shoutao.picp.net/shoutao/STService.asmx/UPDATEjiesInfo";
 	public static String URL_UPDATE_ZHUANGTAI = "http://shoutao.picp.net/shoutao/STService.asmx/UPDATEzhutInfo";
 	public static String URL_SHUT_DOWN_ZHUANGTAI = "http://shoutao.picp.net/shoutao/STService.asmx/UPDATEjiesxinxInfo";//更新结束信息
+	public static String URL_SHUT_DOWN_OWN = "http://shoutao.picp.net/shoutao/STService.asmx/UPDATEWGgb";//更新违例结束信息
 }

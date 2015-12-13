@@ -417,6 +417,7 @@ public class WatchService extends AccessibilityService {
 									log("更新结束信息 response=" + response);
 									if (response.equals("成功")) {
 										shutDownTimes = 0;
+										mTeamViewData.mPCIDTEXT = "";
 									} else {
 										if (shutDownTimes < TIMES) {
 											handler.removeMessages(UPDATE_SHUTDOWN_ZHUANGTAI);
@@ -478,6 +479,46 @@ public class WatchService extends AccessibilityService {
 		super.onDestroy();
 		if (mWakeLock != null) {
 			mWakeLock.release();
+		}
+		if(!TextUtils.isEmpty(mTeamViewData.mIdText)&&!TextUtils.isEmpty(mTeamViewData.mPCIDTEXT)){
+			RequestParams params = new RequestParams(UrlData.URL_SHUT_DOWN_OWN);
+			params.addBodyParameter("授权用户", UrlData.ADMIN_UID);
+			params.addBodyParameter("密码", UrlData.ADMIN_PASSWORD);
+			params.addBodyParameter("设备ID", mTeamViewData.mIdText);
+			params.addBodyParameter("用户ID", mTeamViewData.mPCIDTEXT);
+			log("违例结束   设备ID=" + mTeamViewData.mIdText + "用户id="
+					+ mTeamViewData.mPCIDTEXT);
+			x.http().post(params, new CommonCallback<String>() {
+				@Override
+				public void onSuccess(String result) {
+					InputStream sbs = new ByteArrayInputStream(result
+							.getBytes());
+					String response = "";
+					try {
+						response = XMLParse.parseResponseCheck(sbs);
+						log("违例结束=" + response);
+					} catch (Exception e) {
+
+					}
+				}
+				@Override
+				public void onError(Throwable ex,
+						boolean isOnCallback) {
+					log("违例结束   error" + ex.getMessage());
+
+				}
+
+				@Override
+				public void onCancelled(CancelledException cex) {
+
+				}
+
+				@Override
+				public void onFinished() {
+
+				}
+			});
+			
 		}
 	}
 
@@ -569,8 +610,6 @@ public class WatchService extends AccessibilityService {
 			if (event.getClassName().toString().equals(GET_UID_PC)) {
 				if (ReadyPCID(rowNode)) {
 					log("have pcid success=" + mTeamViewData.mPCIDTEXT);
-					mTeamViewData.mPCIDTEXT = "247691847";
-					mTeamViewData.mIdText = "433309163";
 					state = STATE_PC_ID_SUCCESS;
 					RequestParams params = new RequestParams(
 							UrlData.URL_CHECK_ID);
