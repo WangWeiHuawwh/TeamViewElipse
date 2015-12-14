@@ -69,7 +69,9 @@ public class WatchService extends AccessibilityService {
 	public static final int SHUT_DOWN_CONNECTION = 3;// 结束连接
 	public static final int UPDATE_ZHUANGTAI = 4;
 	public static final int UPDATE_SHUTDOWN_ZHUANGTAI = 5;
+	public static final int UPDATE_BEGIN_ZHUANGTAI = 6;
 	public static final int UPDATE_TIME_TIME = 30 * 1000;
+	public static final int UPDATE_BEGIN_TIME_TIME = 60 * 1000;
 	public static final int SHUT_DOWN_TEAM_TIME = 3600 * 1000;
 	public ProcessWatcher processWatcher;
 	public volatile int zhuangtaiTimes = 0;
@@ -418,6 +420,7 @@ public class WatchService extends AccessibilityService {
 									if (response.equals("成功")) {
 										shutDownTimes = 0;
 										mTeamViewData.mPCIDTEXT = "";
+										state = STATE_BEGIN;
 									} else {
 										if (shutDownTimes < TIMES) {
 											handler.removeMessages(UPDATE_SHUTDOWN_ZHUANGTAI);
@@ -468,6 +471,24 @@ public class WatchService extends AccessibilityService {
 					}
 				});
 				break;
+			case UPDATE_BEGIN_ZHUANGTAI://写状态时直接调用状态的handler即可
+				if (state == STATE_BEGIN)// 没有获取到id，正在激活,离线状态
+				{
+					//没有获取到id，写入离线状态，并同时再次进行此handler
+					//如果没有获取到id，如何写离线状态？怎么找到对应id的记录写呢?
+					handler.removeMessages(UPDATE_BEGIN_ZHUANGTAI);
+					handler.sendEmptyMessageDelayed(UPDATE_BEGIN_ZHUANGTAI,
+							UPDATE_BEGIN_TIME_TIME);
+				} else if (state == STATE_GET_ID_SUCCESS)// 获取到id，正在空闲状态
+				{
+						//成功获取到id，写入空闲状态，并停止handler
+					Message msg = new Message();
+					msg.what = UPDATE_ZHUANGTAI;
+					msg.obj = "空闲";
+					handler.removeMessages(UPDATE_ZHUANGTAI);
+					handler.sendEmptyMessage(UPDATE_ZHUANGTAI);
+				}
+				break;
 
 			}
 		}
@@ -480,7 +501,8 @@ public class WatchService extends AccessibilityService {
 		if (mWakeLock != null) {
 			mWakeLock.release();
 		}
-		if(!TextUtils.isEmpty(mTeamViewData.mIdText)&&!TextUtils.isEmpty(mTeamViewData.mPCIDTEXT)){
+		if (!TextUtils.isEmpty(mTeamViewData.mIdText)
+				&& !TextUtils.isEmpty(mTeamViewData.mPCIDTEXT)) {
 			RequestParams params = new RequestParams(UrlData.URL_SHUT_DOWN_OWN);
 			params.addBodyParameter("授权用户", UrlData.ADMIN_UID);
 			params.addBodyParameter("密码", UrlData.ADMIN_PASSWORD);
@@ -501,9 +523,9 @@ public class WatchService extends AccessibilityService {
 
 					}
 				}
+
 				@Override
-				public void onError(Throwable ex,
-						boolean isOnCallback) {
+				public void onError(Throwable ex, boolean isOnCallback) {
 					log("违例结束   error" + ex.getMessage());
 
 				}
@@ -518,7 +540,7 @@ public class WatchService extends AccessibilityService {
 
 				}
 			});
-			
+
 		}
 	}
 
@@ -540,6 +562,10 @@ public class WatchService extends AccessibilityService {
 			log(e.getMessage());
 		}
 		log("onCreate()");
+		// 打开teamview并开启检测是否获取到id的handler
+		handler.removeMessages(UPDATE_BEGIN_ZHUANGTAI);
+		handler.sendEmptyMessageDelayed(UPDATE_BEGIN_ZHUANGTAI,
+				UPDATE_BEGIN_TIME_TIME);
 
 	}
 
@@ -955,6 +981,9 @@ public class WatchService extends AccessibilityService {
 		if (info.getChildCount() == 0) {
 			if (info != null
 					&& info.getClassName().equals("android.widget.EditText")) {
+				if (info.getText().toString().trim().equals("正在激活")) {
+					state = STATE_BEGIN;
+				}
 				if (info.getText().toString().trim().equals("-")) {
 					mTeamViewData.mIdTextHash = info.hashCode();
 					return info.hashCode();
