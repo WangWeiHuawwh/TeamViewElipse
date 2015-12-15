@@ -6,6 +6,7 @@ import android.annotation.TargetApi;
 import android.app.ActivityManager;
 import android.app.ActivityManager.RunningAppProcessInfo;
 import android.app.Notification;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
@@ -60,6 +61,7 @@ public class WatchService extends AccessibilityService {
 	private static final String MAIN_ACTIVITY = "com.teamviewer.quicksupport.ui.MainActivity";
 	private static final String GET_ID_CLASS = "android.widget.TextView";
 	private static final String GET_UID_PC = "android.app.Dialog";
+	private static final String paName = "com.teamviewer.quicksupport.market";
 	private TeamViewData mTeamViewData = new TeamViewData();
 	private static final String FRAMELAYOUT = "android.widget.FrameLayout";
 	private PowerManager.WakeLock mWakeLock;
@@ -192,6 +194,10 @@ public class WatchService extends AccessibilityService {
 					handler.removeMessages(SHUT_DOWN_CONNECTION);
 					handler.sendEmptyMessage(SHUT_DOWN_CONNECTION);
 				}
+				if (mTeamViewData.pidId != 0) {
+					final ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+					am.restartPackage(paName);
+				}
 				state = STATE_BEGIN;
 				mTeamViewData.pidId = 0;
 				break;
@@ -199,6 +205,7 @@ public class WatchService extends AccessibilityService {
 				state = STATC_CONNECTION_OVER;
 				mTeamViewData.pidId = 0;
 				handler.removeCallbacksAndMessages(null);
+				startTeamView();
 				RequestParams timeparams2 = new RequestParams(
 						UrlData.URL_GET_TIME);
 				x.http().post(timeparams2, new CommonCallback<String>() {
@@ -471,17 +478,25 @@ public class WatchService extends AccessibilityService {
 					}
 				});
 				break;
-			case UPDATE_BEGIN_ZHUANGTAI://写状态时直接调用状态的handler即可
+			case UPDATE_BEGIN_ZHUANGTAI:// 写状态时直接调用状态的handler即可
+				log("UPDATE_BEGIN_ZHUANGTAI=" + state+";id="+mTeamViewData.mIdText);
 				if (state == STATE_BEGIN)// 没有获取到id，正在激活,离线状态
 				{
-					//没有获取到id，写入离线状态，并同时再次进行此handler
-					//如果没有获取到id，如何写离线状态？怎么找到对应id的记录写呢?
+					// 没有获取到id，写入离线状态，并同时再次进行此handler
+					// 如果没有获取到id，如何写离线状态？怎么找到对应id的记录写呢?
+					if (mTeamViewData.mIdText.length() > 0) {
+						Message msg = new Message();
+						msg.what = UPDATE_ZHUANGTAI;
+						msg.obj = "离线";
+						handler.removeMessages(UPDATE_ZHUANGTAI);
+						handler.sendEmptyMessage(UPDATE_ZHUANGTAI);
+					}
 					handler.removeMessages(UPDATE_BEGIN_ZHUANGTAI);
 					handler.sendEmptyMessageDelayed(UPDATE_BEGIN_ZHUANGTAI,
 							UPDATE_BEGIN_TIME_TIME);
 				} else if (state == STATE_GET_ID_SUCCESS)// 获取到id，正在空闲状态
 				{
-						//成功获取到id，写入空闲状态，并停止handler
+					// 成功获取到id，写入空闲状态，并停止handler
 					Message msg = new Message();
 					msg.what = UPDATE_ZHUANGTAI;
 					msg.obj = "空闲";
@@ -558,15 +573,25 @@ public class WatchService extends AccessibilityService {
 		try {
 			mLogWriter = LogWriter.open(logf.getAbsolutePath());
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
+			// TODO Auto-generatedo catch block
 			log(e.getMessage());
 		}
 		log("onCreate()");
+		startTeamView();
 		// 打开teamview并开启检测是否获取到id的handler
+
+	}
+
+	public void startTeamView() {
+		Intent mIntent = new Intent();
+		mIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+		ComponentName comp = new ComponentName(paName, MAIN_ACTIVITY);
+		mIntent.setComponent(comp);
+		mIntent.setAction("android.intent.action.VIEW");
+		startActivity(mIntent);
 		handler.removeMessages(UPDATE_BEGIN_ZHUANGTAI);
 		handler.sendEmptyMessageDelayed(UPDATE_BEGIN_ZHUANGTAI,
 				UPDATE_BEGIN_TIME_TIME);
-
 	}
 
 	public void log(String msg) {
