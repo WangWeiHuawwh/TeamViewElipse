@@ -72,6 +72,7 @@ public class WatchService extends AccessibilityService {
 	public static final int UPDATE_ZHUANGTAI = 4;
 	public static final int UPDATE_SHUTDOWN_ZHUANGTAI = 5;
 	public static final int UPDATE_BEGIN_ZHUANGTAI = 6;
+	public static final int UPDATE_STARTEAM = 99;
 	public static final int UPDATE_TIME_TIME = 30 * 1000;
 	public static final int UPDATE_BEGIN_TIME_TIME = 60 * 1000;
 	public static final int SHUT_DOWN_TEAM_TIME = 3600 * 1000;
@@ -86,8 +87,8 @@ public class WatchService extends AccessibilityService {
 		public void shutDown(boolean is) {
 			// TODO Auto-generated method stub
 			log("TeamView进程结束");
-			handler.removeMessages(SHUT_DOWN_TEAM);
-			handler.sendEmptyMessage(SHUT_DOWN_TEAM);
+			// handler.removeMessages(SHUT_DOWN_TEAM);
+			// handler.sendEmptyMessage(SHUT_DOWN_TEAM);
 		}
 
 	};
@@ -194,18 +195,26 @@ public class WatchService extends AccessibilityService {
 					handler.removeMessages(SHUT_DOWN_CONNECTION);
 					handler.sendEmptyMessage(SHUT_DOWN_CONNECTION);
 				}
-				if (mTeamViewData.pidId != 0) {
-					final ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
-					am.restartPackage(paName);
-				}
-				state = STATE_BEGIN;
-				mTeamViewData.pidId = 0;
+				break;
+			case UPDATE_STARTEAM:
+				startTeamView();
 				break;
 			case SHUT_DOWN_CONNECTION:
 				state = STATC_CONNECTION_OVER;
-				mTeamViewData.pidId = 0;
 				handler.removeCallbacksAndMessages(null);
-				startTeamView();
+				// if (mTeamViewData.pidId != 0) {
+				final ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+				if (android.os.Build.VERSION.SDK_INT < 8) {
+					am.restartPackage(paName);
+				} else {
+					am.killBackgroundProcesses(paName);
+				}
+				// }
+				if (processWatcher != null) {
+					processWatcher.stop();
+				}
+				handler.removeMessages(UPDATE_STARTEAM);
+				handler.sendEmptyMessageDelayed(UPDATE_STARTEAM, 1000 * 3);
 				RequestParams timeparams2 = new RequestParams(
 						UrlData.URL_GET_TIME);
 				x.http().post(timeparams2, new CommonCallback<String>() {
@@ -479,7 +488,8 @@ public class WatchService extends AccessibilityService {
 				});
 				break;
 			case UPDATE_BEGIN_ZHUANGTAI:// 写状态时直接调用状态的handler即可
-				log("UPDATE_BEGIN_ZHUANGTAI=" + state+";id="+mTeamViewData.mIdText);
+				log("UPDATE_BEGIN_ZHUANGTAI=" + state + ";id="
+						+ mTeamViewData.mIdText);
 				if (state == STATE_BEGIN)// 没有获取到id，正在激活,离线状态
 				{
 					// 没有获取到id，写入离线状态，并同时再次进行此handler
@@ -487,9 +497,9 @@ public class WatchService extends AccessibilityService {
 					if (mTeamViewData.mIdText.length() > 0) {
 						Message msg = new Message();
 						msg.what = UPDATE_ZHUANGTAI;
-						msg.obj = "离线";
+						msg.obj = (String) "离线";
 						handler.removeMessages(UPDATE_ZHUANGTAI);
-						handler.sendEmptyMessage(UPDATE_ZHUANGTAI);
+						handler.sendMessage(msg);
 					}
 					handler.removeMessages(UPDATE_BEGIN_ZHUANGTAI);
 					handler.sendEmptyMessageDelayed(UPDATE_BEGIN_ZHUANGTAI,
@@ -499,9 +509,9 @@ public class WatchService extends AccessibilityService {
 					// 成功获取到id，写入空闲状态，并停止handler
 					Message msg = new Message();
 					msg.what = UPDATE_ZHUANGTAI;
-					msg.obj = "空闲";
+					msg.obj = (String) "空闲";
 					handler.removeMessages(UPDATE_ZHUANGTAI);
-					handler.sendEmptyMessage(UPDATE_ZHUANGTAI);
+					handler.sendMessage(msg);
 				}
 				break;
 
@@ -589,6 +599,7 @@ public class WatchService extends AccessibilityService {
 		mIntent.setComponent(comp);
 		mIntent.setAction("android.intent.action.VIEW");
 		startActivity(mIntent);
+		state = STATE_BEGIN;
 		handler.removeMessages(UPDATE_BEGIN_ZHUANGTAI);
 		handler.sendEmptyMessageDelayed(UPDATE_BEGIN_ZHUANGTAI,
 				UPDATE_BEGIN_TIME_TIME);
@@ -782,12 +793,12 @@ public class WatchService extends AccessibilityService {
 					+ event.getClassName().toString());
 			if (event.getClassName().toString().equals(GET_ID_CLASS)
 					|| event.getClassName().toString().equals(FRAMELAYOUT)) {
-				if (mTeamViewData.mIdText.equals("")) {// 为空才判断
-					if (ReadyID(rowNode)) {
-						state = STATE_GET_ID_SUCCESS;
-						log("have id success=" + mTeamViewData.mIdText);
-					}
+				// if (mTeamViewData.mIdText.equals("")) {// 为空才判断
+				if (ReadyID(rowNode)) {
+					state = STATE_GET_ID_SUCCESS;
+					log("have id success=" + mTeamViewData.mIdText);
 				}
+				// }
 			}
 			if (event.getClassName().toString()
 					.equals("android.widget.FrameLayout")
