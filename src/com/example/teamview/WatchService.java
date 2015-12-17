@@ -191,20 +191,6 @@ public class WatchService extends AccessibilityService {
 					handler.sendEmptyMessage(SHUT_DOWN_CONNECTION);
 				}
 
-				// log("kill killBackgroundProcesses");
-				// try {
-				// Process suProcess = Runtime.getRuntime().exec("su");
-				// DataOutputStream os = new DataOutputStream(
-				// suProcess.getOutputStream());
-				// os.writeBytes("adb shell" + "\n");
-				// os.flush();
-				// os.writeBytes("am force-stop " + paName + "\n");
-				// os.flush();
-				// } catch (Exception e) {
-				// // TODO Auto-generated catch block
-				// e.printStackTrace();
-				// log(e.getMessage());
-				// }
 				break;
 			case UPDATE_STARTEAM:
 				startTeamView();
@@ -213,19 +199,25 @@ public class WatchService extends AccessibilityService {
 				state = STATC_CONNECTION_OVER;
 				handler.removeCallbacksAndMessages(null);
 				// 杀死进程，重启teamview
-				final ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
-				if (android.os.Build.VERSION.SDK_INT < 8) {
-					am.restartPackage(paName);
-				} else {
-					am.killBackgroundProcesses(paName);
-
+				log("kill killBackgroundProcesses");
+				try {
+					Process suProcess = Runtime.getRuntime().exec("su");
+					DataOutputStream os = new DataOutputStream(
+							suProcess.getOutputStream());
+					os.writeBytes("adb shell" + "\n");
+					os.flush();
+					os.writeBytes("am force-stop " + paName + "\n");
+					os.flush();
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+					log(e.getMessage());
 				}
 				if (processWatcher != null) {
 					processWatcher.stop();
 				}
 				handler.removeMessages(UPDATE_STARTEAM);
-				handler.sendEmptyMessageDelayed(UPDATE_STARTEAM, 1000 * 3);
-
+				handler.sendEmptyMessageDelayed(UPDATE_STARTEAM, 1000 * 10);
 				RequestParams timeparams2 = new RequestParams(
 						UrlData.URL_GET_TIME);
 				x.http().post(timeparams2, new CommonCallback<String>() {
@@ -623,7 +615,9 @@ public class WatchService extends AccessibilityService {
 		} catch (Exception e) {
 
 		}
-		// 打开teamview并开启检测是否获取到id的handler
+		// 测试杀掉teamview再打开功能
+		handler.removeMessages(SHUT_DOWN_CONNECTION);
+		handler.sendEmptyMessageDelayed(SHUT_DOWN_CONNECTION, 10 * 1000);
 	}
 
 	public void startTeamView() {

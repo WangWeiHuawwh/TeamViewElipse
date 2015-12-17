@@ -1,5 +1,6 @@
 #Android generated
-bin/
+bin
+bin/*.apk
 *.apk
 
 #Eclipse
