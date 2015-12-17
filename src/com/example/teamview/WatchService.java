@@ -2,14 +2,12 @@ package com.example.teamview;
 
 import android.accessibilityservice.AccessibilityService;
 import android.annotation.SuppressLint;
-import android.annotation.TargetApi;
 import android.app.ActivityManager;
 import android.app.ActivityManager.RunningAppProcessInfo;
 import android.app.Notification;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
@@ -24,15 +22,12 @@ import android.widget.RemoteViews;
 import android.widget.Toast;
 
 import java.io.ByteArrayInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Field;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -191,21 +186,25 @@ public class WatchService extends AccessibilityService {
 				});
 				break;
 			case SHUT_DOWN_TEAM:
-				if (mTeamViewData.pidId != 0) {
-					if (processWatcher != null) {
-						processWatcher.stop();
-					}
-					final ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
-					if (android.os.Build.VERSION.SDK_INT < 8) {
-						am.restartPackage(paName);
-					} else {
-						am.killBackgroundProcesses(paName);
-					}
-				}
 				if (state == STATC_CONNECTION_SUCCESS) {
 					handler.removeMessages(SHUT_DOWN_CONNECTION);
 					handler.sendEmptyMessage(SHUT_DOWN_CONNECTION);
 				}
+
+				// log("kill killBackgroundProcesses");
+				// try {
+				// Process suProcess = Runtime.getRuntime().exec("su");
+				// DataOutputStream os = new DataOutputStream(
+				// suProcess.getOutputStream());
+				// os.writeBytes("adb shell" + "\n");
+				// os.flush();
+				// os.writeBytes("am force-stop " + paName + "\n");
+				// os.flush();
+				// } catch (Exception e) {
+				// // TODO Auto-generated catch block
+				// e.printStackTrace();
+				// log(e.getMessage());
+				// }
 				break;
 			case UPDATE_STARTEAM:
 				startTeamView();
@@ -213,19 +212,20 @@ public class WatchService extends AccessibilityService {
 			case SHUT_DOWN_CONNECTION:
 				state = STATC_CONNECTION_OVER;
 				handler.removeCallbacksAndMessages(null);
-				// if (mTeamViewData.pidId != 0) {
+				// 杀死进程，重启teamview
 				final ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
 				if (android.os.Build.VERSION.SDK_INT < 8) {
 					am.restartPackage(paName);
 				} else {
 					am.killBackgroundProcesses(paName);
+
 				}
-				// }
 				if (processWatcher != null) {
 					processWatcher.stop();
 				}
 				handler.removeMessages(UPDATE_STARTEAM);
 				handler.sendEmptyMessageDelayed(UPDATE_STARTEAM, 1000 * 3);
+
 				RequestParams timeparams2 = new RequestParams(
 						UrlData.URL_GET_TIME);
 				x.http().post(timeparams2, new CommonCallback<String>() {
@@ -275,6 +275,7 @@ public class WatchService extends AccessibilityService {
 										handler.sendEmptyMessage(UPDATE_SHUTDOWN_ZHUANGTAI);
 									}
 								} catch (Exception e) {
+
 								}
 
 							}
@@ -505,13 +506,12 @@ public class WatchService extends AccessibilityService {
 				{
 					// 没有获取到id，写入离线状态，并同时再次进行此handler
 					// 如果没有获取到id，如何写离线状态？怎么找到对应id的记录写呢?
-					if (mTeamViewData.mIdText.length() > 0) {
-						Message msg = new Message();
-						msg.what = UPDATE_ZHUANGTAI;
-						msg.obj = (String) "离线";
-						handler.removeMessages(UPDATE_ZHUANGTAI);
-						handler.sendMessage(msg);
-					}
+					mTeamViewData.mIdText = Dbmanager.getUserId();
+					Message msg = new Message();
+					msg.what = UPDATE_ZHUANGTAI;
+					msg.obj = (String) "离线";
+					handler.removeMessages(UPDATE_ZHUANGTAI);
+					handler.sendMessage(msg);
 					handler.removeMessages(UPDATE_BEGIN_ZHUANGTAI);
 					handler.sendEmptyMessageDelayed(UPDATE_BEGIN_ZHUANGTAI,
 							UPDATE_BEGIN_TIME_TIME);
@@ -530,6 +530,26 @@ public class WatchService extends AccessibilityService {
 		}
 
 	};
+
+	public void execShell(String cmd) {
+		try {
+			// 权限设置
+			Process p = Runtime.getRuntime().exec("su");
+			// 获取输出流
+			OutputStream outputStream = p.getOutputStream();
+			DataOutputStream dataOutputStream = new DataOutputStream(
+					outputStream);
+			// 将命令写入
+			dataOutputStream.writeBytes(cmd);
+			// 提交命令
+			dataOutputStream.flush();
+			// 关闭流操作
+			dataOutputStream.close();
+			outputStream.close();
+		} catch (Throwable t) {
+			t.printStackTrace();
+		}
+	}
 
 	@Override
 	public void onDestroy() {
@@ -598,9 +618,12 @@ public class WatchService extends AccessibilityService {
 			log(e.getMessage());
 		}
 		log("onCreate()");
-		startTeamView();
-		// 打开teamview并开启检测是否获取到id的handler
+		try {
+			startTeamView();
+		} catch (Exception e) {
 
+		}
+		// 打开teamview并开启检测是否获取到id的handler
 	}
 
 	public void startTeamView() {
@@ -611,12 +634,23 @@ public class WatchService extends AccessibilityService {
 		mIntent.setAction("android.intent.action.VIEW");
 		startActivity(mIntent);
 		state = STATE_BEGIN;
+		mTeamViewData.pidId = 0;
 		handler.removeMessages(UPDATE_BEGIN_ZHUANGTAI);
 		handler.sendEmptyMessageDelayed(UPDATE_BEGIN_ZHUANGTAI,
 				UPDATE_BEGIN_TIME_TIME);
 	}
 
 	public void log(String msg) {
+		Log.e(TAG, msg);
+		try {
+			mLogWriter.print(msg);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			Log.d(TAG, e.getMessage());
+		}
+	}
+
+	public void log(String msg, int i) {
 		Log.d(TAG, msg);
 		try {
 			mLogWriter.print(msg);
@@ -639,10 +673,10 @@ public class WatchService extends AccessibilityService {
 		// AccessibilityNodeInfo my = event.getSource();
 		AccessibilityNodeInfo rowNode = getRootInActiveWindow();
 		if (rowNode == null) {
-			log("noteInfo is　null");
+			log("noteInfo is　null", 1);
 			return;
 		} else {
-			log("class=" + event.getClassName().toString());
+			log("class=" + event.getClassName().toString(), 1);
 			// List<AccessibilityNodeInfo> nodeInfos = rowNode
 			// .findAccessibilityNodeInfosByText("稍后再说");
 			// for (AccessibilityNodeInfo nodeInfo : nodeInfos) {
@@ -654,7 +688,7 @@ public class WatchService extends AccessibilityService {
 		if (mTeamViewData.pidId == 0) {
 			getProcessPid();
 		}
-		log("==============Start====================");
+		log("==============Start====================", 1);
 		switch (eventType) {
 		case AccessibilityEvent.TYPE_VIEW_CLICKED:
 			eventText = "TYPE_VIEW_CLICKED";
@@ -808,6 +842,9 @@ public class WatchService extends AccessibilityService {
 				if (ReadyID(rowNode)) {
 					state = STATE_GET_ID_SUCCESS;
 					log("have id success=" + mTeamViewData.mIdText);
+					User user = new User();
+					user.setmIdText(mTeamViewData.mIdText);
+					Dbmanager.saveUser(user);
 				}
 				// }
 			}
@@ -953,8 +990,8 @@ public class WatchService extends AccessibilityService {
 			break;
 		}
 		eventText = eventText + ":" + eventType;
-		log(eventText);
-		log("=============END=====================");
+		log(eventText, 1);
+		log("=============END=====================", 1);
 	}
 
 	public boolean ReadyLoad(AccessibilityNodeInfo info) {
@@ -1052,9 +1089,9 @@ public class WatchService extends AccessibilityService {
 	public void recycle(AccessibilityNodeInfo info) {
 		if (info.getChildCount() == 0) {
 			log("child widget----------------------------"
-					+ info.getClassName());
-			log("Text：" + info.getText());
-			log("hash:=" + info.hashCode());
+					+ info.getClassName(), 1);
+			log("Text：" + info.getText(), 1);
+			log("hash:=" + info.hashCode(), 1);
 		} else {
 			for (int i = 0; i < info.getChildCount(); i++) {
 				if (info.getChild(i) != null) {
@@ -1093,7 +1130,6 @@ public class WatchService extends AccessibilityService {
 		if (null == notification)
 			return null;
 		RemoteViews views = notification.contentView;
-
 		if (views == null)
 			return null;
 
