@@ -190,16 +190,23 @@ public class WatchService extends AccessibilityService {
 				});
 				break;
 			case SHUT_DOWN_TEAM:
+				if (mTeamViewData.pidId != 0) {
+					if (processWatcher != null) {
+						processWatcher.stop();
+					}
+					final ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+					if (android.os.Build.VERSION.SDK_INT < 8) {
+						am.restartPackage(paName);
+					} else {
+						am.killBackgroundProcesses(paName);
+					}
+				}
 				if (state == STATC_CONNECTION_SUCCESS) {
 					handler.removeMessages(SHUT_DOWN_CONNECTION);
 					handler.sendEmptyMessage(SHUT_DOWN_CONNECTION);
 				}
-				if (mTeamViewData.pidId != 0) {
-					final ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
-					am.restartPackage(paName);
-				}
-				state = STATE_BEGIN;
 				mTeamViewData.pidId = 0;
+				state = STATE_BEGIN;
 				break;
 			case SHUT_DOWN_CONNECTION:
 				state = STATC_CONNECTION_OVER;
@@ -479,7 +486,8 @@ public class WatchService extends AccessibilityService {
 				});
 				break;
 			case UPDATE_BEGIN_ZHUANGTAI:// 写状态时直接调用状态的handler即可
-				log("UPDATE_BEGIN_ZHUANGTAI=" + state+";id="+mTeamViewData.mIdText);
+				log("UPDATE_BEGIN_ZHUANGTAI=" + state + ";id="
+						+ mTeamViewData.mIdText);
 				if (state == STATE_BEGIN)// 没有获取到id，正在激活,离线状态
 				{
 					// 没有获取到id，写入离线状态，并同时再次进行此handler
