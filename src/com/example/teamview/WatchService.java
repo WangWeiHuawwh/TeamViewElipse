@@ -217,7 +217,7 @@ public class WatchService extends AccessibilityService {
 					processWatcher.stop();
 				}
 				handler.removeMessages(UPDATE_STARTEAM);
-				handler.sendEmptyMessageDelayed(UPDATE_STARTEAM, 1000 * 10);
+				handler.sendEmptyMessageDelayed(UPDATE_STARTEAM, 1000 * 8);
 				RequestParams timeparams2 = new RequestParams(
 						UrlData.URL_GET_TIME);
 				x.http().post(timeparams2, new CommonCallback<String>() {
@@ -616,8 +616,13 @@ public class WatchService extends AccessibilityService {
 
 		}
 		// 测试杀掉teamview再打开功能
-		handler.removeMessages(SHUT_DOWN_CONNECTION);
-		handler.sendEmptyMessageDelayed(SHUT_DOWN_CONNECTION, 10 * 1000);
+		try {
+			Runtime.getRuntime().exec(
+					new String[] { "/system/bin/su", "-c", "ls -al" });
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	public void startTeamView() {
