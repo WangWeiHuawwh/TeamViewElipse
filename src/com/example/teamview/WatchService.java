@@ -8,6 +8,7 @@ import android.app.Notification;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
@@ -494,7 +495,7 @@ public class WatchService extends AccessibilityService {
 			case UPDATE_BEGIN_ZHUANGTAI:// 写状态时直接调用状态的handler即可
 				log("UPDATE_BEGIN_ZHUANGTAI=" + state + ";id="
 						+ mTeamViewData.mIdText);
-				if (state == STATE_BEGIN)// 没有获取到id，正在激活,离线状态
+				if (state == STATE_BEGIN || state == STATE_ACTIVATIONING)// 没有获取到id，正在激活,离线状态
 				{
 					// 没有获取到id，写入离线状态，并同时再次进行此handler
 					// 如果没有获取到id，如何写离线状态？怎么找到对应id的记录写呢?
@@ -610,11 +611,6 @@ public class WatchService extends AccessibilityService {
 			log(e.getMessage());
 		}
 		log("onCreate()");
-		try {
-			startTeamView();
-		} catch (Exception e) {
-
-		}
 		// 测试杀掉teamview再打开功能
 		try {
 			Runtime.getRuntime().exec(
@@ -623,9 +619,33 @@ public class WatchService extends AccessibilityService {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		if (!isAppInstalled(WatchService.this, paName)) {
+			Log.d("DemoLog", "no install");
+			ApkController apkController = new ApkController(WatchService.this);
+			apkController.install();
+		} else {
+			try {
+				startTeamView();
+			} catch (Exception e) {
+
+			}
+		}
+	}
+
+	private boolean isAppInstalled(Context context, String uri) {
+		PackageManager pm = context.getPackageManager();
+		boolean installed = false;
+		try {
+			pm.getPackageInfo(uri, PackageManager.GET_ACTIVITIES);
+			installed = true;
+		} catch (PackageManager.NameNotFoundException e) {
+			installed = false;
+		}
+		return installed;
 	}
 
 	public void startTeamView() {
+		log("startTeamView");
 		Intent mIntent = new Intent();
 		mIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 		ComponentName comp = new ComponentName(paName, MAIN_ACTIVITY);
