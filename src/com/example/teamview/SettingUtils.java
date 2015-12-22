@@ -22,29 +22,33 @@ public class SettingUtils {
 
 	public void reset() {
 		if (isAuto) {
-			startAutoBrightness((Activity) mContext);
+			startAutoBrightness(mContext);
 		}
-		WindowManager.LayoutParams lp = ((Activity) mContext).getWindow()
-				.getAttributes();
-		lp.screenBrightness = brightness / 255.0f;
-		((Activity) mContext).getWindow().setAttributes(lp);
+		// WindowManager.LayoutParams lp = ((Activity) mContext).getWindow()
+		// .getAttributes();
+		// lp.screenBrightness = brightness / 255.0f;
+		// ((Activity) mContext).getWindow().setAttributes(lp);
 		Settings.System.putInt(mContext.getContentResolver(),
 				Settings.System.SCREEN_BRIGHTNESS, brightness);
+		saveBrightness(mContext.getContentResolver(), brightness);
+		Log.e("DemoLog", "恢复brightness=" + brightness);
 	}
 
 	public void setBrightness(int i) {
 		if (isAutoBrightness(mContext.getContentResolver())) {
 			isAuto = true;
-			stopAutoBrightness((Activity) mContext);
+			stopAutoBrightness(mContext);
 		}
-		WindowManager.LayoutParams lp = ((Activity) mContext).getWindow()
-				.getAttributes();
+		// WindowManager.LayoutParams lp = ((Activity) mContext).getWindow()
+		// .getAttributes();
 		brightness = Settings.System.getInt(mContext.getContentResolver(),
 				Settings.System.SCREEN_BRIGHTNESS, 0);
-		lp.screenBrightness = i / 255.0f;
-		((Activity) mContext).getWindow().setAttributes(lp);
+		Log.e("DemoLog", "set brightness=" + brightness);
+		// lp.screenBrightness = i / 255.0f;
+		// ((Activity) mContext).getWindow().setAttributes(lp);
 		Settings.System.putInt(mContext.getContentResolver(),
 				Settings.System.SCREEN_BRIGHTNESS, i);
+		saveBrightness(mContext.getContentResolver(), i);
 	}
 
 	/**
@@ -71,7 +75,7 @@ public class SettingUtils {
 	 * 获取屏幕的亮度
 	 */
 
-	public static int getScreenBrightness(Activity activity) {
+	public static int getScreenBrightness(Context activity) {
 
 		int nowBrightnessValue = 0;
 
@@ -121,7 +125,7 @@ public class SettingUtils {
 	 * 停止自动亮度调节
 	 */
 
-	public static void stopAutoBrightness(Activity activity) {
+	public static void stopAutoBrightness(Context activity) {
 
 		Settings.System.putInt(activity.getContentResolver(),
 
@@ -138,7 +142,7 @@ public class SettingUtils {
 	 * @param activity
 	 */
 
-	public static void startAutoBrightness(Activity activity) {
+	public static void startAutoBrightness(Context activity) {
 
 		Settings.System.putInt(activity.getContentResolver(),
 

@@ -77,6 +77,7 @@ public class WatchService extends AccessibilityService {
 	public volatile int shutDownTimes = 0;
 	public static final int TIMES = 5;
 	public static final int TRY_TIME = 2 * 1000;
+	SettingUtils settingUtils;
 	public ShutDownListener shutDownListener = new ShutDownListener() {
 
 		@Override
@@ -591,6 +592,28 @@ public class WatchService extends AccessibilityService {
 			});
 
 		}
+		if (handler != null) {
+			handler.removeCallbacksAndMessages(null);
+		}
+		try {
+			Process suProcess = Runtime.getRuntime().exec("su");
+			DataOutputStream os = new DataOutputStream(
+					suProcess.getOutputStream());
+			os.writeBytes("adb shell" + "\n");
+			os.flush();
+			os.writeBytes("am force-stop " + paName + "\n");
+			os.flush();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			log(e.getMessage());
+		}
+		if (processWatcher != null) {
+			processWatcher.stop();
+		}
+		if (settingUtils != null) {
+			settingUtils.reset();
+		}
 	}
 
 	private LogWriter mLogWriter;
@@ -630,6 +653,9 @@ public class WatchService extends AccessibilityService {
 
 			}
 		}
+		// 亮度调节
+		settingUtils = new SettingUtils(WatchService.this);
+		settingUtils.setBrightness(0);
 	}
 
 	private boolean isAppInstalled(Context context, String uri) {
