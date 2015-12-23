@@ -68,9 +68,10 @@ public class WatchService extends AccessibilityService {
 	public static final int UPDATE_ZHUANGTAI = 4;
 	public static final int UPDATE_SHUTDOWN_ZHUANGTAI = 5;
 	public static final int UPDATE_BEGIN_ZHUANGTAI = 6;
+	public static final int BEGIN_BEGIN = 7;
 	public static final int UPDATE_STARTEAM = 99;
 	public static final int UPDATE_TIME_TIME = 30 * 1000;
-	public static final int UPDATE_BEGIN_TIME_TIME = 60 * 1000;
+	public static final int UPDATE_BEGIN_TIME_TIME = 60 * 1000;//1分钟写一次
 	public static final int SHUT_DOWN_TEAM_TIME = 3600 * 1000;
 	public ProcessWatcher processWatcher;
 	public volatile int zhuangtaiTimes = 0;
@@ -84,8 +85,8 @@ public class WatchService extends AccessibilityService {
 		public void shutDown(boolean is) {
 			// TODO Auto-generated method stub
 			log("TeamView进程结束");
-			// handler.removeMessages(SHUT_DOWN_TEAM);
-			// handler.sendEmptyMessage(SHUT_DOWN_TEAM);
+			handler.removeCallbacksAndMessages(null);
+			handler.sendEmptyMessageDelayed(UPDATE_STARTEAM,5*60*1000);
 		}
 
 	};
@@ -519,6 +520,118 @@ public class WatchService extends AccessibilityService {
 					handler.sendMessage(msg);
 				}
 				break;
+			case BEGIN_BEGIN:
+				state = STATC_CONNECTION_SUCCESS;
+				log("connection success");
+				RequestParams timeparambegin = new RequestParams(
+						UrlData.URL_GET_TIME);
+				x.http().post(timeparambegin, new CommonCallback<String>() {
+					@Override
+					public void onSuccess(String result) {
+						InputStream sbs = new ByteArrayInputStream(result
+								.getBytes());
+						String response = "";
+						try {
+							response = XMLParse.parseResponseCheck(sbs);
+							log("获取时间 response=" + response);
+						} catch (Exception e) {
+
+						}
+						if (response.equals("")) {
+							return;
+						}
+						RequestParams params = new RequestParams(
+								UrlData.URL_BEGIN_CONNECT);
+						params.addBodyParameter("授权用户", UrlData.ADMIN_UID);
+						params.addBodyParameter("密码", UrlData.ADMIN_PASSWORD);
+						params.addBodyParameter("用户ID", mTeamViewData.mPCIDTEXT);
+						params.addBodyParameter("设备ID", mTeamViewData.mIdText);
+						params.addBodyParameter("开始时间", toTime(response));
+						params.addBodyParameter("使用时间",
+								mTeamViewData.BEGIN_TIME);
+						log("用户ID=" + mTeamViewData.mPCIDTEXT + ";设备ID="
+								+ mTeamViewData.mIdText + "开始时间="
+								+ toTime(response) + "使用时间="
+								+ mTeamViewData.BEGIN_TIME);
+						x.http().post(params, new CommonCallback<String>() {
+							@Override
+							public void onSuccess(String result) {
+								InputStream sbs = new ByteArrayInputStream(
+										result.getBytes());
+								try {
+									String response = XMLParse
+											.parseResponseCheck(sbs);
+									Log.d("DemoLog", "开始时间 response="
+											+ response);
+									if (response.equals("成功")) {
+										// 点击自动允许
+										if (mTeamViewData.allowButton != null) {
+											mTeamViewData.allowButton
+													.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+											// state = STATE_ALLOW;
+										} else {
+											log("allowButton==null");
+										}
+										Message msg = new Message();
+										msg.what = UPDATE_ZHUANGTAI;
+										msg.obj = (String) "忙碌";
+										handler.removeMessages(UPDATE_ZHUANGTAI);
+										handler.sendMessage(msg);
+										handler.removeMessages(UPDATE_TIME);
+										handler.sendEmptyMessageDelayed(
+												UPDATE_TIME, UPDATE_TIME_TIME);
+										handler.removeMessages(SHUT_DOWN_TEAM);
+										handler.sendEmptyMessageDelayed(
+												SHUT_DOWN_TEAM,
+												SHUT_DOWN_TEAM_TIME);
+										Intent i = new Intent(
+												Intent.ACTION_MAIN);
+										i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+										i.addCategory(Intent.CATEGORY_HOME);
+										startActivity(i);
+									}
+								} catch (Exception e) {
+									log(e.getMessage());
+								}
+
+							}
+
+							@Override
+							public void onError(Throwable ex,
+									boolean isOnCallback) {
+								Log.d("DemoLog", "开始时间 error" + ex.getMessage());
+
+							}
+
+							@Override
+							public void onCancelled(CancelledException cex) {
+
+							}
+
+							@Override
+							public void onFinished() {
+
+							}
+						});
+					}
+
+					@Override
+					public void onError(Throwable ex, boolean isOnCallback) {
+						Log.d("DemoLog", "get time error=" + ex.getMessage());
+
+					}
+
+					@Override
+					public void onCancelled(CancelledException cex) {
+
+					}
+
+					@Override
+					public void onFinished() {
+
+					}
+				});
+				break;
 
 			}
 		}
@@ -622,7 +735,7 @@ public class WatchService extends AccessibilityService {
 	public void onCreate() {
 		super.onCreate();
 		PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
-		mWakeLock = pm.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK, "My Tag");
+		mWakeLock = pm.newWakeLock(PowerManager.FULL_WAKE_LOCK, "My Tag");
 		mWakeLock.acquire();
 		File logf = new File(Environment.getExternalStorageDirectory()
 				+ File.separator + "DemoLog.txt");
@@ -646,6 +759,8 @@ public class WatchService extends AccessibilityService {
 			Log.d("DemoLog", "no install");
 			ApkController apkController = new ApkController(WatchService.this);
 			apkController.install();
+			handler.removeMessages(UPDATE_BEGIN_ZHUANGTAI);
+			handler.sendEmptyMessage(UPDATE_BEGIN_ZHUANGTAI);
 		} else {
 			try {
 				startTeamView();
@@ -683,6 +798,8 @@ public class WatchService extends AccessibilityService {
 		handler.removeMessages(UPDATE_BEGIN_ZHUANGTAI);
 		handler.sendEmptyMessageDelayed(UPDATE_BEGIN_ZHUANGTAI,
 				UPDATE_BEGIN_TIME_TIME);
+		//先删除上一次的启动tv
+		handler.removeMessages(UPDATE_STARTEAM);
 	}
 
 	public void log(String msg) {
@@ -787,13 +904,9 @@ public class WatchService extends AccessibilityService {
 													.toTime2(response);
 											log("mTeamViewData.BEGIN_TIME="
 													+ mTeamViewData.BEGIN_TIME);
-											if (mTeamViewData.allowButton != null) {
-												mTeamViewData.allowButton
-														.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-												state = STATE_ALLOW;
-											} else {
-												log("allowButton==null");
-											}
+											// 写开始时间
+											handler.removeMessages(BEGIN_BEGIN);
+											handler.sendEmptyMessage(BEGIN_BEGIN);
 										} else {
 											if (mTeamViewData.rejectButton != null) {
 												mTeamViewData.rejectButton
@@ -900,134 +1013,7 @@ public class WatchService extends AccessibilityService {
 					log("connection ing");
 					if (ReadyLoad(rowNode))// 连接成功
 					{
-						state = STATC_CONNECTION_SUCCESS;
-						log("connection success");
-						processWatcher = new ProcessWatcher(
-								mTeamViewData.pidId, shutDownListener);
-						processWatcher.start();
-						RequestParams timeparams = new RequestParams(
-								UrlData.URL_GET_TIME);
-						x.http().post(timeparams,
-								new Callback.CommonCallback<String>() {
-									@Override
-									public void onSuccess(String result) {
-										InputStream sbs = new ByteArrayInputStream(
-												result.getBytes());
-										String response = "";
-										try {
-											response = XMLParse
-													.parseResponseCheck(sbs);
-											log("获取时间 response=" + response);
-										} catch (Exception e) {
 
-										}
-										if (response.equals("")) {
-											return;
-										}
-										RequestParams params = new RequestParams(
-												UrlData.URL_BEGIN_CONNECT);
-										params.addBodyParameter("授权用户",
-												UrlData.ADMIN_UID);
-										params.addBodyParameter("密码",
-												UrlData.ADMIN_PASSWORD);
-										params.addBodyParameter("用户ID",
-												mTeamViewData.mPCIDTEXT);
-										params.addBodyParameter("设备ID",
-												mTeamViewData.mIdText);
-										params.addBodyParameter("开始时间",
-												toTime(response));
-										params.addBodyParameter("使用时间",
-												mTeamViewData.BEGIN_TIME);
-										log("用户ID=" + mTeamViewData.mPCIDTEXT
-												+ ";设备ID="
-												+ mTeamViewData.mIdText
-												+ "开始时间=" + toTime(response)
-												+ "使用时间="
-												+ mTeamViewData.BEGIN_TIME);
-										x.http()
-												.post(params,
-														new Callback.CommonCallback<String>() {
-															@Override
-															public void onSuccess(
-																	String result) {
-																InputStream sbs = new ByteArrayInputStream(
-																		result.getBytes());
-																try {
-																	String response = XMLParse
-																			.parseResponseCheck(sbs);
-																	Log.d("DemoLog",
-																			"开始时间 response="
-																					+ response);
-																	if (response
-																			.equals("成功")) {
-																		Message msg = new Message();
-																		msg.what = UPDATE_ZHUANGTAI;
-																		msg.obj = (String) "忙碌";
-																		handler.removeMessages(UPDATE_ZHUANGTAI);
-																		handler.sendMessage(msg);
-																		handler.removeMessages(UPDATE_TIME);
-																		handler.sendEmptyMessageDelayed(
-																				UPDATE_TIME,
-																				UPDATE_TIME_TIME);
-																		handler.removeMessages(SHUT_DOWN_TEAM);
-																		handler.sendEmptyMessageDelayed(
-																				SHUT_DOWN_TEAM,
-																				SHUT_DOWN_TEAM_TIME);
-																		Intent i = new Intent(
-																				Intent.ACTION_MAIN);
-																		i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-																		i.addCategory(Intent.CATEGORY_HOME);
-																		startActivity(i);
-																	}
-																} catch (Exception e) {
-																	log(e.getMessage());
-																}
-
-															}
-
-															@Override
-															public void onError(
-																	Throwable ex,
-																	boolean isOnCallback) {
-																Log.d("DemoLog",
-																		"开始时间 error"
-																				+ ex.getMessage());
-
-															}
-
-															@Override
-															public void onCancelled(
-																	CancelledException cex) {
-
-															}
-
-															@Override
-															public void onFinished() {
-
-															}
-														});
-									}
-
-									@Override
-									public void onError(Throwable ex,
-											boolean isOnCallback) {
-										Log.d("DemoLog",
-												"get time error="
-														+ ex.getMessage());
-
-									}
-
-									@Override
-									public void onCancelled(
-											CancelledException cex) {
-
-									}
-
-									@Override
-									public void onFinished() {
-
-									}
-								});
 					}
 				}
 
@@ -1165,6 +1151,9 @@ public class WatchService extends AccessibilityService {
 					.equals("com.teamviewer.quicksupport.market")) {
 				mTeamViewData.pidId = procInfo.pid;
 				log("get pid success=" + mTeamViewData.pidId);
+				processWatcher = new ProcessWatcher(mTeamViewData.pidId,
+						shutDownListener);
+				processWatcher.start();
 				break;
 			}
 		}
