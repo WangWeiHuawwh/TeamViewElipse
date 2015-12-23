@@ -69,10 +69,12 @@ public class WatchService extends AccessibilityService {
 	public static final int UPDATE_SHUTDOWN_ZHUANGTAI = 5;
 	public static final int UPDATE_BEGIN_ZHUANGTAI = 6;
 	public static final int BEGIN_BEGIN = 7;
+	public static final int OPEN = 8;
 	public static final int UPDATE_STARTEAM = 99;
 	public static final int UPDATE_TIME_TIME = 30 * 1000;
-	public static final int UPDATE_BEGIN_TIME_TIME = 60 * 1000;//1分钟写一次
+	public static final int UPDATE_BEGIN_TIME_TIME = 60 * 1000;// 1分钟写一次
 	public static final int SHUT_DOWN_TEAM_TIME = 3600 * 1000;
+	public static final int RESTART = 5 * 60 * 1000;// 5分钟打开一次
 	public ProcessWatcher processWatcher;
 	public volatile int zhuangtaiTimes = 0;
 	public volatile int shutDownTimes = 0;
@@ -85,8 +87,9 @@ public class WatchService extends AccessibilityService {
 		public void shutDown(boolean is) {
 			// TODO Auto-generated method stub
 			log("TeamView进程结束");
-			handler.removeCallbacksAndMessages(null);
-			handler.sendEmptyMessageDelayed(UPDATE_STARTEAM,5*60*1000);
+			mTeamViewData.pidId = 0;
+			// handler.removeCallbacksAndMessages(null);
+			// handler.sendEmptyMessageDelayed(UPDATE_STARTEAM,5*60*1000);
 		}
 
 	};
@@ -197,6 +200,20 @@ public class WatchService extends AccessibilityService {
 				break;
 			case UPDATE_STARTEAM:
 				startTeamView();
+				break;
+			case OPEN:
+				log("restart state=" + state);
+				if (state != STATC_CONNECTION_SUCCESS) {
+					Intent mIntent = new Intent();
+					mIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+					ComponentName comp = new ComponentName(paName,
+							MAIN_ACTIVITY);
+					mIntent.setComponent(comp);
+					mIntent.setAction("android.intent.action.VIEW");
+					startActivity(mIntent);
+				}
+				handler.removeMessages(OPEN);
+				handler.sendEmptyMessageDelayed(OPEN, RESTART);
 				break;
 			case SHUT_DOWN_CONNECTION:
 				state = STATC_CONNECTION_OVER;
@@ -771,6 +788,7 @@ public class WatchService extends AccessibilityService {
 		// 亮度调节
 		settingUtils = new SettingUtils(WatchService.this);
 		settingUtils.setBrightness(0);
+
 	}
 
 	private boolean isAppInstalled(Context context, String uri) {
@@ -798,8 +816,11 @@ public class WatchService extends AccessibilityService {
 		handler.removeMessages(UPDATE_BEGIN_ZHUANGTAI);
 		handler.sendEmptyMessageDelayed(UPDATE_BEGIN_ZHUANGTAI,
 				UPDATE_BEGIN_TIME_TIME);
-		//先删除上一次的启动tv
+		// 先删除上一次的启动tv
 		handler.removeMessages(UPDATE_STARTEAM);
+		// 自动打开
+		handler.removeMessages(OPEN);
+		handler.sendEmptyMessageDelayed(OPEN, RESTART);
 	}
 
 	public void log(String msg) {
