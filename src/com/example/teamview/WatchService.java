@@ -81,6 +81,8 @@ public class WatchService extends AccessibilityService {
 	public static final int TIMES = 5;
 	public static final int TRY_TIME = 2 * 1000;
 	SettingUtils settingUtils;
+	public volatile int getTimeTimes = 0;
+	public static final int timeerrorTime = 1000;
 	public ShutDownListener shutDownListener = new ShutDownListener() {
 
 		@Override
@@ -118,6 +120,20 @@ public class WatchService extends AccessibilityService {
 						}
 						if (response.equals("")) {
 							return;
+						} else {
+							if (!isTimeTRUE(response)) {// 获取时间格式不对则重复三次
+								if (getTimeTimes < 3) {
+									handler.removeMessages(UPDATE_TIME);
+									handler.sendEmptyMessageDelayed(
+											UPDATE_TIME, timeerrorTime);
+								} else {
+									getTimeTimes = 0;
+									timeErrorRestart();
+									return;
+								}
+							} else {
+								getTimeTimes = 0;
+							}
 						}
 						RequestParams params = new RequestParams(
 								UrlData.URL_UPDATE_TIME);
@@ -255,6 +271,19 @@ public class WatchService extends AccessibilityService {
 						if (response.equals("")) {
 							return;
 						}
+						if (!isTimeTRUE(response)) {// 获取时间格式不对则重复三次
+							if (getTimeTimes < 3) {
+								handler.removeMessages(SHUT_DOWN_CONNECTION);
+								handler.sendEmptyMessageDelayed(
+										SHUT_DOWN_CONNECTION, timeerrorTime);
+							} else {
+								getTimeTimes = 0;
+								timeErrorRestart();
+								return;
+							}
+						} else {
+							getTimeTimes = 0;
+						}
 						RequestParams params = new RequestParams(
 								UrlData.URL_UPDATE_TIME_END);
 						params.addBodyParameter("授权用户", UrlData.ADMIN_UID);
@@ -345,6 +374,19 @@ public class WatchService extends AccessibilityService {
 						}
 						if (response.equals("")) {
 							return;
+						}
+						if (!isTimeTRUE(response)) {// 获取时间格式不对则重复三次
+							if (getTimeTimes < 3) {
+								handler.removeMessages(UPDATE_ZHUANGTAI);
+								handler.sendEmptyMessageDelayed(
+										UPDATE_ZHUANGTAI, timeerrorTime);
+							} else {
+								getTimeTimes = 0;
+								timeErrorRestart();
+								return;
+							}
+						} else {
+							getTimeTimes = 0;
 						}
 
 						log("连接状态=" + zhuangtai);
@@ -439,6 +481,20 @@ public class WatchService extends AccessibilityService {
 						}
 						if (response.equals("")) {
 							return;
+						}
+						if (!isTimeTRUE(response)) {// 获取时间格式不对则重复三次
+							if (getTimeTimes < 3) {
+								handler.removeMessages(UPDATE_SHUTDOWN_ZHUANGTAI);
+								handler.sendEmptyMessageDelayed(
+										UPDATE_SHUTDOWN_ZHUANGTAI,
+										timeerrorTime);
+							} else {
+								getTimeTimes = 0;
+								timeErrorRestart();
+								return;
+							}
+						} else {
+							getTimeTimes = 0;
 						}
 						RequestParams params = new RequestParams(
 								UrlData.URL_SHUT_DOWN_ZHUANGTAI);
@@ -556,6 +612,19 @@ public class WatchService extends AccessibilityService {
 						}
 						if (response.equals("")) {
 							return;
+						}
+						if (!isTimeTRUE(response)) {// 获取时间格式不对则重复三次
+							if (getTimeTimes < 3) {
+								handler.removeMessages(BEGIN_BEGIN);
+								handler.sendEmptyMessageDelayed(BEGIN_BEGIN,
+										timeerrorTime);
+							} else {
+								getTimeTimes = 0;
+								timeErrorRestart();
+								return;
+							}
+						} else {
+							getTimeTimes = 0;
 						}
 						RequestParams params = new RequestParams(
 								UrlData.URL_BEGIN_CONNECT);
@@ -900,7 +969,7 @@ public class WatchService extends AccessibilityService {
 			if (event.getClassName().toString().equals(GET_UID_PC)) {
 				if (ReadyPCID(rowNode)) {
 					log("have pcid success=" + mTeamViewData.mPCIDTEXT);
-					state = STATE_PC_ID_SUCCESS;
+					// state = STATE_PC_ID_SUCCESS;
 					RequestParams params = new RequestParams(
 							UrlData.URL_CHECK_ID);
 					params.addBodyParameter("授权用户", UrlData.ADMIN_UID);
@@ -932,7 +1001,7 @@ public class WatchService extends AccessibilityService {
 											if (mTeamViewData.rejectButton != null) {
 												mTeamViewData.rejectButton
 														.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-												state = STATE_REJECT;
+												// state = STATE_REJECT;
 												Message msg = new Message();
 												msg.what = UPDATE_ZHUANGTAI;
 												msg.obj = (String) "空闲";
@@ -1283,5 +1352,42 @@ public class WatchService extends AccessibilityService {
 		} else {
 			return "";
 		}
+	}
+
+	public static boolean isTimeTRUE(String time) {
+		try {
+			if (Integer.parseInt(time.substring(0, 4)) > 2014) {
+				return true;
+			} else {
+				return false;
+			}
+		} catch (Exception e) {
+			return false;
+		}
+
+	}
+
+	public void timeErrorRestart() {
+		// 重启
+		handler.removeCallbacksAndMessages(null);
+		log("kill killBackgroundProcesses");
+		try {
+			Process suProcess = Runtime.getRuntime().exec("su");
+			DataOutputStream os = new DataOutputStream(
+					suProcess.getOutputStream());
+			os.writeBytes("adb shell" + "\n");
+			os.flush();
+			os.writeBytes("am force-stop " + paName + "\n");
+			os.flush();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			log(e.getMessage());
+		}
+		if (processWatcher != null) {
+			processWatcher.stop();
+		}
+		handler.removeMessages(UPDATE_STARTEAM);
+		handler.sendEmptyMessageDelayed(UPDATE_STARTEAM, 1000 * 8);
 	}
 }
