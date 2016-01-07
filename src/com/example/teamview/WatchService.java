@@ -129,8 +129,8 @@ public class WatchService extends AccessibilityService {
 								} else {
 									getTimeTimes = 0;
 									timeErrorRestart();
-									return;
 								}
+								return;
 							} else {
 								getTimeTimes = 0;
 							}
@@ -279,8 +279,8 @@ public class WatchService extends AccessibilityService {
 							} else {
 								getTimeTimes = 0;
 								timeErrorRestart();
-								return;
 							}
+							return;
 						} else {
 							getTimeTimes = 0;
 						}
@@ -383,8 +383,8 @@ public class WatchService extends AccessibilityService {
 							} else {
 								getTimeTimes = 0;
 								timeErrorRestart();
-								return;
 							}
+							return;
 						} else {
 							getTimeTimes = 0;
 						}
@@ -491,8 +491,8 @@ public class WatchService extends AccessibilityService {
 							} else {
 								getTimeTimes = 0;
 								timeErrorRestart();
-								return;
 							}
+							return;
 						} else {
 							getTimeTimes = 0;
 						}
@@ -591,6 +591,9 @@ public class WatchService extends AccessibilityService {
 					msg.obj = (String) "空闲";
 					handler.removeMessages(UPDATE_ZHUANGTAI);
 					handler.sendMessage(msg);
+					handler.removeMessages(UPDATE_BEGIN_ZHUANGTAI);
+					handler.sendEmptyMessageDelayed(UPDATE_BEGIN_ZHUANGTAI,
+							UPDATE_BEGIN_TIME_TIME);
 				}
 				break;
 			case BEGIN_BEGIN:
@@ -621,8 +624,8 @@ public class WatchService extends AccessibilityService {
 							} else {
 								getTimeTimes = 0;
 								timeErrorRestart();
-								return;
 							}
+							return;
 						} else {
 							getTimeTimes = 0;
 						}
@@ -1085,7 +1088,9 @@ public class WatchService extends AccessibilityService {
 			log("event.getClassName().toString()="
 					+ event.getClassName().toString());
 			if (event.getClassName().toString().equals(GET_ID_CLASS)
-					|| event.getClassName().toString().equals(FRAMELAYOUT)) {
+					|| event.getClassName().toString().equals(FRAMELAYOUT)
+					|| event.getClassName().toString()
+							.equals("android.widget.EditText")) {
 				// if (mTeamViewData.mIdText.equals("")) {// 为空才判断
 				if (ReadyID(rowNode)) {
 					state = STATE_GET_ID_SUCCESS;
