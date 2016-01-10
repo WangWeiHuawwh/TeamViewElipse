@@ -104,95 +104,42 @@ public class WatchService extends AccessibilityService {
 			final String zhuangtai = (String) message.obj;
 			switch (message.what) {
 			case UPDATE_TIME:
-				RequestParams timeparams = new RequestParams(
-						UrlData.URL_GET_TIME);
-				x.http().post(timeparams, new CommonCallback<String>() {
+
+				RequestParams params = new RequestParams(
+						UrlData.URL_UPDATE_TIME);
+				params.addBodyParameter("授权用户", UrlData.ADMIN_UID);
+				params.addBodyParameter("密码", UrlData.ADMIN_PASSWORD);
+				params.addBodyParameter("用户ID", mTeamViewData.mPCIDTEXT);
+				params.addBodyParameter("设备ID", mTeamViewData.mIdText);
+				params.addBodyParameter("使用时间", mTeamViewData.BEGIN_TIME);
+				log("用户ID=" + mTeamViewData.mPCIDTEXT + ";设备ID="
+						+ mTeamViewData.mIdText + "连接判断=" + "使用时间="
+						+ mTeamViewData.BEGIN_TIME);
+				x.http().post(params, new CommonCallback<String>() {
 					@Override
 					public void onSuccess(String result) {
 						InputStream sbs = new ByteArrayInputStream(result
 								.getBytes());
-						String response = "";
 						try {
-							response = XMLParse.parseResponseCheck(sbs);
-							log("获取时间 response=" + response);
-						} catch (Exception e) {
-
-						}
-						if (response.equals("")) {
-							return;
-						} else {
-							if (!isTimeTRUE(response)) {// 获取时间格式不对则重复三次
-								if (getTimeTimes < 3) {
-									handler.removeMessages(UPDATE_TIME);
-									handler.sendEmptyMessageDelayed(
-											UPDATE_TIME, timeerrorTime);
-								} else {
-									getTimeTimes = 0;
-									timeErrorRestart();
-								}
-								return;
+							String response = XMLParse.parseResponseCheck(sbs);
+							log("连接判断 response=" + response);
+							if (response.equals("成功")) {
+								handler.removeMessages(UPDATE_TIME);
+								handler.sendEmptyMessageDelayed(UPDATE_TIME,
+										UPDATE_TIME_TIME);
 							} else {
-								getTimeTimes = 0;
+								handler.removeMessages(UPDATE_TIME);
+								handler.sendEmptyMessageDelayed(UPDATE_TIME,
+										UPDATE_TIME_TIME);
 							}
+						} catch (Exception e) {
 						}
-						RequestParams params = new RequestParams(
-								UrlData.URL_UPDATE_TIME);
-						params.addBodyParameter("授权用户", UrlData.ADMIN_UID);
-						params.addBodyParameter("密码", UrlData.ADMIN_PASSWORD);
-						params.addBodyParameter("用户ID", mTeamViewData.mPCIDTEXT);
-						params.addBodyParameter("设备ID", mTeamViewData.mIdText);
-						params.addBodyParameter("连接判断", toTime(response));
-						params.addBodyParameter("使用时间",
-								mTeamViewData.BEGIN_TIME);
-						log("用户ID=" + mTeamViewData.mPCIDTEXT + ";设备ID="
-								+ mTeamViewData.mIdText + "连接判断="
-								+ toTime(response) + "使用时间="
-								+ mTeamViewData.BEGIN_TIME);
-						x.http().post(params, new CommonCallback<String>() {
-							@Override
-							public void onSuccess(String result) {
-								InputStream sbs = new ByteArrayInputStream(
-										result.getBytes());
-								try {
-									String response = XMLParse
-											.parseResponseCheck(sbs);
-									log("连接判断 response=" + response);
-									if (response.equals("成功")) {
-										handler.removeMessages(UPDATE_TIME);
-										handler.sendEmptyMessageDelayed(
-												UPDATE_TIME, UPDATE_TIME_TIME);
-									} else {
-										handler.removeMessages(UPDATE_TIME);
-										handler.sendEmptyMessageDelayed(
-												UPDATE_TIME, UPDATE_TIME_TIME);
-									}
-								} catch (Exception e) {
-								}
 
-							}
-
-							@Override
-							public void onError(Throwable ex,
-									boolean isOnCallback) {
-								log("连接判断 error" + ex.getMessage());
-
-							}
-
-							@Override
-							public void onCancelled(CancelledException cex) {
-
-							}
-
-							@Override
-							public void onFinished() {
-
-							}
-						});
 					}
 
 					@Override
 					public void onError(Throwable ex, boolean isOnCallback) {
-						log("get time error=" + ex.getMessage());
+						log("连接判断 error" + ex.getMessage());
 
 					}
 
@@ -206,6 +153,7 @@ public class WatchService extends AccessibilityService {
 
 					}
 				});
+
 				break;
 			case SHUT_DOWN_TEAM:
 				if (state == STATC_CONNECTION_SUCCESS) {
@@ -254,95 +202,43 @@ public class WatchService extends AccessibilityService {
 				}
 				handler.removeMessages(UPDATE_STARTEAM);
 				handler.sendEmptyMessageDelayed(UPDATE_STARTEAM, 1000 * 8);
-				RequestParams timeparams2 = new RequestParams(
-						UrlData.URL_GET_TIME);
-				x.http().post(timeparams2, new CommonCallback<String>() {
+
+				RequestParams params2 = new RequestParams(
+						UrlData.URL_UPDATE_TIME_END);
+				params2.addBodyParameter("授权用户", UrlData.ADMIN_UID);
+				params2.addBodyParameter("密码", UrlData.ADMIN_PASSWORD);
+				params2.addBodyParameter("用户ID", mTeamViewData.mPCIDTEXT);
+				params2.addBodyParameter("设备ID", mTeamViewData.mIdText);
+				params2.addBodyParameter("使用时间", mTeamViewData.BEGIN_TIME);
+				log("用户ID=" + mTeamViewData.mPCIDTEXT + ";设备ID="
+						+ mTeamViewData.mIdText + "使用时间="
+						+ mTeamViewData.BEGIN_TIME);
+				x.http().post(params2, new CommonCallback<String>() {
 					@Override
 					public void onSuccess(String result) {
 						InputStream sbs = new ByteArrayInputStream(result
 								.getBytes());
-						String response = "";
 						try {
-							response = XMLParse.parseResponseCheck(sbs);
-							log("获取时间 response=" + response);
+							String response = XMLParse.parseResponseCheck(sbs);
+							log("结束时间 response=" + response);
+							if (response.equals("成功")) {// 结束的时候不用更改状态写入结束信息即可
+								// Message msg = new Message();
+								// msg.what = UPDATE_ZHUANGTAI;
+								// msg.obj = (String) "空闲";
+								// handler.removeMessages(UPDATE_ZHUANGTAI);
+								// handler.sendMessage(msg);
+								handler.removeMessages(UPDATE_SHUTDOWN_ZHUANGTAI);
+								handler.sendEmptyMessage(UPDATE_SHUTDOWN_ZHUANGTAI);
+							}
 						} catch (Exception e) {
 
 						}
-						if (response.equals("")) {
-							return;
-						}
-						if (!isTimeTRUE(response)) {// 获取时间格式不对则重复三次
-							if (getTimeTimes < 3) {
-								handler.removeMessages(SHUT_DOWN_CONNECTION);
-								handler.sendEmptyMessageDelayed(
-										SHUT_DOWN_CONNECTION, timeerrorTime);
-							} else {
-								getTimeTimes = 0;
-								timeErrorRestart();
-							}
-							return;
-						} else {
-							getTimeTimes = 0;
-						}
-						RequestParams params = new RequestParams(
-								UrlData.URL_UPDATE_TIME_END);
-						params.addBodyParameter("授权用户", UrlData.ADMIN_UID);
-						params.addBodyParameter("密码", UrlData.ADMIN_PASSWORD);
-						params.addBodyParameter("用户ID", mTeamViewData.mPCIDTEXT);
-						params.addBodyParameter("设备ID", mTeamViewData.mIdText);
-						params.addBodyParameter("结束时间", toTime(response));
-						params.addBodyParameter("使用时间",
-								mTeamViewData.BEGIN_TIME);
-						log("用户ID=" + mTeamViewData.mPCIDTEXT + ";设备ID="
-								+ mTeamViewData.mIdText + "结束时间="
-								+ toTime(response) + "使用时间="
-								+ mTeamViewData.BEGIN_TIME);
-						x.http().post(params, new CommonCallback<String>() {
-							@Override
-							public void onSuccess(String result) {
-								InputStream sbs = new ByteArrayInputStream(
-										result.getBytes());
-								try {
-									String response = XMLParse
-											.parseResponseCheck(sbs);
-									log("结束时间 response=" + response);
-									if (response.equals("成功")) {// 结束的时候不用更改状态写入结束信息即可
-										// Message msg = new Message();
-										// msg.what = UPDATE_ZHUANGTAI;
-										// msg.obj = (String) "空闲";
-										// handler.removeMessages(UPDATE_ZHUANGTAI);
-										// handler.sendMessage(msg);
-										handler.removeMessages(UPDATE_SHUTDOWN_ZHUANGTAI);
-										handler.sendEmptyMessage(UPDATE_SHUTDOWN_ZHUANGTAI);
-									}
-								} catch (Exception e) {
 
-								}
-
-							}
-
-							@Override
-							public void onError(Throwable ex,
-									boolean isOnCallback) {
-								log("结束时间 error" + ex.getMessage());
-
-							}
-
-							@Override
-							public void onCancelled(CancelledException cex) {
-
-							}
-
-							@Override
-							public void onFinished() {
-
-							}
-						});
 					}
 
 					@Override
 					public void onError(Throwable ex, boolean isOnCallback) {
-						log("get time error=" + ex.getMessage());
+						log("结束时间 error" + ex.getMessage());
 
 					}
 
@@ -356,100 +252,47 @@ public class WatchService extends AccessibilityService {
 
 					}
 				});
+
 				break;
 			case UPDATE_ZHUANGTAI:
-				RequestParams timeparams3 = new RequestParams(
-						UrlData.URL_GET_TIME);
-				x.http().post(timeparams3, new CommonCallback<String>() {
+
+				log("连接状态=" + zhuangtai);
+				RequestParams params3 = new RequestParams(
+						UrlData.URL_UPDATE_ZHUANGTAI);
+				params3.addBodyParameter("授权用户", UrlData.ADMIN_UID);
+				params3.addBodyParameter("密码", UrlData.ADMIN_PASSWORD);
+				params3.addBodyParameter("连接状态", zhuangtai);
+				params3.addBodyParameter("设备ID", mTeamViewData.mIdText);
+				log("连接状态=" + zhuangtai + ";设备ID=" + mTeamViewData.mIdText);
+				x.http().post(params3, new CommonCallback<String>() {
 					@Override
 					public void onSuccess(String result) {
 						InputStream sbs = new ByteArrayInputStream(result
 								.getBytes());
-						String response = "";
 						try {
-							response = XMLParse.parseResponseCheck(sbs);
-							log("获取时间 response2=" + response);
-						} catch (Exception e) {
-
-						}
-						if (response.equals("")) {
-							return;
-						}
-						if (!isTimeTRUE(response)) {// 获取时间格式不对则重复三次
-							if (getTimeTimes < 3) {
-								handler.removeMessages(UPDATE_ZHUANGTAI);
-								handler.sendEmptyMessageDelayed(
-										UPDATE_ZHUANGTAI, timeerrorTime);
+							String response = XMLParse.parseResponseCheck(sbs);
+							log("更新状态 response=" + response);
+							if (response.equals("成功")) {
+								zhuangtaiTimes = 0;
 							} else {
-								getTimeTimes = 0;
-								timeErrorRestart();
+								if (zhuangtaiTimes < TIMES) {
+									Message msg = new Message();
+									msg.what = UPDATE_ZHUANGTAI;
+									msg.obj = zhuangtai;
+									handler.removeMessages(UPDATE_ZHUANGTAI);
+									handler.sendMessageDelayed(msg, TRY_TIME);
+									zhuangtaiTimes++;
+								}
 							}
-							return;
-						} else {
-							getTimeTimes = 0;
+						} catch (Exception e) {
+							log("ZHUANGTAI=" + e.getMessage());
 						}
 
-						log("连接状态=" + zhuangtai);
-						RequestParams params = new RequestParams(
-								UrlData.URL_UPDATE_ZHUANGTAI);
-						params.addBodyParameter("授权用户", UrlData.ADMIN_UID);
-						params.addBodyParameter("密码", UrlData.ADMIN_PASSWORD);
-						params.addBodyParameter("连接状态", zhuangtai);
-						params.addBodyParameter("设备ID", mTeamViewData.mIdText);
-						params.addBodyParameter("同步时间", toTime(response));
-						log("连接状态=" + zhuangtai + ";设备ID="
-								+ mTeamViewData.mIdText + "同步时间="
-								+ toTime(response));
-						x.http().post(params, new CommonCallback<String>() {
-							@Override
-							public void onSuccess(String result) {
-								InputStream sbs = new ByteArrayInputStream(
-										result.getBytes());
-								try {
-									String response = XMLParse
-											.parseResponseCheck(sbs);
-									log("更新状态 response=" + response);
-									if (response.equals("成功")) {
-										zhuangtaiTimes = 0;
-									} else {
-										if (zhuangtaiTimes < TIMES) {
-											Message msg = new Message();
-											msg.what = UPDATE_ZHUANGTAI;
-											msg.obj = zhuangtai;
-											handler.removeMessages(UPDATE_ZHUANGTAI);
-											handler.sendMessageDelayed(msg,
-													TRY_TIME);
-											zhuangtaiTimes++;
-										}
-									}
-								} catch (Exception e) {
-									log("ZHUANGTAI=" + e.getMessage());
-								}
-
-							}
-
-							@Override
-							public void onError(Throwable ex,
-									boolean isOnCallback) {
-								log("更新状态 error" + ex.getMessage());
-
-							}
-
-							@Override
-							public void onCancelled(CancelledException cex) {
-
-							}
-
-							@Override
-							public void onFinished() {
-
-							}
-						});
 					}
 
 					@Override
 					public void onError(Throwable ex, boolean isOnCallback) {
-						log("get time error2=" + ex.getMessage());
+						log("更新状态 error" + ex.getMessage());
 
 					}
 
@@ -463,96 +306,43 @@ public class WatchService extends AccessibilityService {
 
 					}
 				});
+
 				break;
 			case UPDATE_SHUTDOWN_ZHUANGTAI:
-				RequestParams timeparams4 = new RequestParams(
-						UrlData.URL_GET_TIME);
-				x.http().post(timeparams4, new CommonCallback<String>() {
+				RequestParams params4 = new RequestParams(
+						UrlData.URL_SHUT_DOWN_ZHUANGTAI);
+				params4.addBodyParameter("授权用户", UrlData.ADMIN_UID);
+				params4.addBodyParameter("密码", UrlData.ADMIN_PASSWORD);
+				params4.addBodyParameter("设备ID", mTeamViewData.mIdText);
+				log("设备ID=" + mTeamViewData.mIdText);
+				x.http().post(params4, new CommonCallback<String>() {
 					@Override
 					public void onSuccess(String result) {
 						InputStream sbs = new ByteArrayInputStream(result
 								.getBytes());
-						String response = "";
 						try {
-							response = XMLParse.parseResponseCheck(sbs);
-							log("获取时间 response4=" + response);
-						} catch (Exception e) {
-
-						}
-						if (response.equals("")) {
-							return;
-						}
-						if (!isTimeTRUE(response)) {// 获取时间格式不对则重复三次
-							if (getTimeTimes < 3) {
-								handler.removeMessages(UPDATE_SHUTDOWN_ZHUANGTAI);
-								handler.sendEmptyMessageDelayed(
-										UPDATE_SHUTDOWN_ZHUANGTAI,
-										timeerrorTime);
+							String response = XMLParse.parseResponseCheck(sbs);
+							log("更新结束信息 response=" + response);
+							if (response.equals("成功")) {
+								shutDownTimes = 0;
+								mTeamViewData.mPCIDTEXT = "";
+								state = STATE_BEGIN;
 							} else {
-								getTimeTimes = 0;
-								timeErrorRestart();
-							}
-							return;
-						} else {
-							getTimeTimes = 0;
-						}
-						RequestParams params = new RequestParams(
-								UrlData.URL_SHUT_DOWN_ZHUANGTAI);
-						params.addBodyParameter("授权用户", UrlData.ADMIN_UID);
-						params.addBodyParameter("密码", UrlData.ADMIN_PASSWORD);
-						params.addBodyParameter("设备ID", mTeamViewData.mIdText);
-						params.addBodyParameter("同步时间", toTime(response));
-						log("设备ID=" + mTeamViewData.mIdText + "同步时间="
-								+ toTime(response));
-						x.http().post(params, new CommonCallback<String>() {
-							@Override
-							public void onSuccess(String result) {
-								InputStream sbs = new ByteArrayInputStream(
-										result.getBytes());
-								try {
-									String response = XMLParse
-											.parseResponseCheck(sbs);
-									log("更新结束信息 response=" + response);
-									if (response.equals("成功")) {
-										shutDownTimes = 0;
-										mTeamViewData.mPCIDTEXT = "";
-										state = STATE_BEGIN;
-									} else {
-										if (shutDownTimes < TIMES) {
-											handler.removeMessages(UPDATE_SHUTDOWN_ZHUANGTAI);
-											handler.sendEmptyMessageDelayed(
-													UPDATE_SHUTDOWN_ZHUANGTAI,
-													TRY_TIME);
-											shutDownTimes++;
-										}
-									}
-								} catch (Exception e) {
+								if (shutDownTimes < TIMES) {
+									handler.removeMessages(UPDATE_SHUTDOWN_ZHUANGTAI);
+									handler.sendEmptyMessageDelayed(
+											UPDATE_SHUTDOWN_ZHUANGTAI, TRY_TIME);
+									shutDownTimes++;
 								}
-
 							}
+						} catch (Exception e) {
+						}
 
-							@Override
-							public void onError(Throwable ex,
-									boolean isOnCallback) {
-								log("更新结束信息 error" + ex.getMessage());
-
-							}
-
-							@Override
-							public void onCancelled(CancelledException cex) {
-
-							}
-
-							@Override
-							public void onFinished() {
-
-							}
-						});
 					}
 
 					@Override
 					public void onError(Throwable ex, boolean isOnCallback) {
-						log("get time error2=" + ex.getMessage());
+						log("更新结束信息 error" + ex.getMessage());
 
 					}
 
@@ -566,6 +356,7 @@ public class WatchService extends AccessibilityService {
 
 					}
 				});
+
 				break;
 			case UPDATE_BEGIN_ZHUANGTAI:// 写状态时直接调用状态的handler即可
 				log("UPDATE_BEGIN_ZHUANGTAI=" + state + ";id="
@@ -599,114 +390,59 @@ public class WatchService extends AccessibilityService {
 			case BEGIN_BEGIN:
 				state = STATC_CONNECTION_SUCCESS;
 				log("connection success");
-				RequestParams timeparambegin = new RequestParams(
-						UrlData.URL_GET_TIME);
-				x.http().post(timeparambegin, new CommonCallback<String>() {
+
+				RequestParams params5 = new RequestParams(
+						UrlData.URL_BEGIN_CONNECT);
+				params5.addBodyParameter("授权用户", UrlData.ADMIN_UID);
+				params5.addBodyParameter("密码", UrlData.ADMIN_PASSWORD);
+				params5.addBodyParameter("用户ID", mTeamViewData.mPCIDTEXT);
+				params5.addBodyParameter("设备ID", mTeamViewData.mIdText);
+				params5.addBodyParameter("使用时间", mTeamViewData.BEGIN_TIME);
+				log("用户ID=" + mTeamViewData.mPCIDTEXT + ";设备ID="
+						+ mTeamViewData.mIdText + "使用时间="
+						+ mTeamViewData.BEGIN_TIME);
+				x.http().post(params5, new CommonCallback<String>() {
 					@Override
 					public void onSuccess(String result) {
 						InputStream sbs = new ByteArrayInputStream(result
 								.getBytes());
-						String response = "";
 						try {
-							response = XMLParse.parseResponseCheck(sbs);
-							log("获取时间 response=" + response);
-						} catch (Exception e) {
-
-						}
-						if (response.equals("")) {
-							return;
-						}
-						if (!isTimeTRUE(response)) {// 获取时间格式不对则重复三次
-							if (getTimeTimes < 3) {
-								handler.removeMessages(BEGIN_BEGIN);
-								handler.sendEmptyMessageDelayed(BEGIN_BEGIN,
-										timeerrorTime);
-							} else {
-								getTimeTimes = 0;
-								timeErrorRestart();
-							}
-							return;
-						} else {
-							getTimeTimes = 0;
-						}
-						RequestParams params = new RequestParams(
-								UrlData.URL_BEGIN_CONNECT);
-						params.addBodyParameter("授权用户", UrlData.ADMIN_UID);
-						params.addBodyParameter("密码", UrlData.ADMIN_PASSWORD);
-						params.addBodyParameter("用户ID", mTeamViewData.mPCIDTEXT);
-						params.addBodyParameter("设备ID", mTeamViewData.mIdText);
-						params.addBodyParameter("开始时间", toTime(response));
-						params.addBodyParameter("使用时间",
-								mTeamViewData.BEGIN_TIME);
-						log("用户ID=" + mTeamViewData.mPCIDTEXT + ";设备ID="
-								+ mTeamViewData.mIdText + "开始时间="
-								+ toTime(response) + "使用时间="
-								+ mTeamViewData.BEGIN_TIME);
-						x.http().post(params, new CommonCallback<String>() {
-							@Override
-							public void onSuccess(String result) {
-								InputStream sbs = new ByteArrayInputStream(
-										result.getBytes());
-								try {
-									String response = XMLParse
-											.parseResponseCheck(sbs);
-									Log.d("DemoLog", "开始时间 response="
-											+ response);
-									if (response.equals("成功")) {
-										// 点击自动允许
-										if (mTeamViewData.allowButton != null) {
-											mTeamViewData.allowButton
-													.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-											// state = STATE_ALLOW;
-										} else {
-											log("allowButton==null");
-										}
-										Message msg = new Message();
-										msg.what = UPDATE_ZHUANGTAI;
-										msg.obj = (String) "忙碌";
-										handler.removeMessages(UPDATE_ZHUANGTAI);
-										handler.sendMessage(msg);
-										handler.removeMessages(UPDATE_TIME);
-										handler.sendEmptyMessageDelayed(
-												UPDATE_TIME, UPDATE_TIME_TIME);
-										handler.removeMessages(SHUT_DOWN_TEAM);
-										handler.sendEmptyMessageDelayed(
-												SHUT_DOWN_TEAM,
-												SHUT_DOWN_TEAM_TIME);
-										Intent i = new Intent(
-												Intent.ACTION_MAIN);
-										i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-										i.addCategory(Intent.CATEGORY_HOME);
-										startActivity(i);
-									}
-								} catch (Exception e) {
-									log(e.getMessage());
+							String response = XMLParse.parseResponseCheck(sbs);
+							Log.d("DemoLog", "开始时间 response=" + response);
+							if (response.equals("成功")) {
+								// 点击自动允许
+								if (mTeamViewData.allowButton != null) {
+									mTeamViewData.allowButton
+											.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+									// state = STATE_ALLOW;
+								} else {
+									log("allowButton==null");
 								}
-
+								Message msg = new Message();
+								msg.what = UPDATE_ZHUANGTAI;
+								msg.obj = (String) "忙碌";
+								handler.removeMessages(UPDATE_ZHUANGTAI);
+								handler.sendMessage(msg);
+								handler.removeMessages(UPDATE_TIME);
+								handler.sendEmptyMessageDelayed(UPDATE_TIME,
+										UPDATE_TIME_TIME);
+								handler.removeMessages(SHUT_DOWN_TEAM);
+								handler.sendEmptyMessageDelayed(SHUT_DOWN_TEAM,
+										SHUT_DOWN_TEAM_TIME);
+								Intent i = new Intent(Intent.ACTION_MAIN);
+								i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+								i.addCategory(Intent.CATEGORY_HOME);
+								startActivity(i);
 							}
+						} catch (Exception e) {
+							log(e.getMessage());
+						}
 
-							@Override
-							public void onError(Throwable ex,
-									boolean isOnCallback) {
-								Log.d("DemoLog", "开始时间 error" + ex.getMessage());
-
-							}
-
-							@Override
-							public void onCancelled(CancelledException cex) {
-
-							}
-
-							@Override
-							public void onFinished() {
-
-							}
-						});
 					}
 
 					@Override
 					public void onError(Throwable ex, boolean isOnCallback) {
-						Log.d("DemoLog", "get time error=" + ex.getMessage());
+						Log.d("DemoLog", "开始时间 error" + ex.getMessage());
 
 					}
 
@@ -720,6 +456,7 @@ public class WatchService extends AccessibilityService {
 
 					}
 				});
+
 				break;
 
 			}
